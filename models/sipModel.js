@@ -1,12 +1,24 @@
-const db = require("../utility/dbManager");
+const client = require("../utility/pgManager");
 
 
 
-const addSIP = (data, callback) => {
+
+// ADD SIP
+
+const addSIP = async (data) => {
+
+    const {
+        sip_id,
+        portfolio_id,
+        fund_id,
+        sip_amount,
+        sip_date,
+        start_date,
+        status
+    } = data;
 
     const query = `
-        INSERT INTO sip_registration
-        (
+        INSERT INTO sip_registration(
             sip_id,
             portfolio_id,
             fund_id,
@@ -15,59 +27,73 @@ const addSIP = (data, callback) => {
             start_date,
             status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES($1,$2,$3,$4,$5,$6,$7)
     `;
 
-    db.run(
-        query,
-        [
-            data.sip_id,
-            data.portfolio_id,
-            data.fund_id,
-            data.sip_amount,
-            data.sip_date,
-            data.start_date,
-            data.status
-        ],
-        callback
-    );
+    return client.query(query, [
+        sip_id,
+        portfolio_id,
+        fund_id,
+        sip_amount,
+        sip_date,
+        start_date,
+        status
+    ]);
 };
 
 
 
-const fetchSIP = (sipId, callback) => {
+
+// FETCH SIP
+
+const fetchSIP = async (sipId) => {
 
     const query = `
         SELECT *
         FROM sip_registration
-        WHERE sip_id = ?
+        WHERE sip_id = $1
     `;
 
-    db.get(query, [sipId], callback);
+    return client.query(query, [sipId]);
 };
 
 
 
-const getLatestNAV = (fundId, callback) => {
+
+// GET LATEST NAV
+
+const getLatestNAV = async (fundId) => {
 
     const query = `
         SELECT nav_value
         FROM nav_history
-        WHERE fund_id = ?
+        WHERE fund_id = $1
         ORDER BY nav_date DESC
         LIMIT 1
     `;
 
-    db.get(query, [fundId], callback);
+    return client.query(query, [fundId]);
 };
 
 
 
-const addTransaction = (data, callback) => {
+
+// ADD TRANSACTION
+
+const addTransaction = async (data) => {
+
+    const {
+        transaction_id,
+        sip_id,
+        fund_id,
+        transaction_amount,
+        nav_at_purchase,
+        units_allocated,
+        transaction_date
+    } = data;
 
     const query = `
-        INSERT INTO investment_transaction
-        (
+        INSERT INTO investment_transaction(
             transaction_id,
             sip_id,
             fund_id,
@@ -76,35 +102,34 @@ const addTransaction = (data, callback) => {
             units_allocated,
             transaction_date
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES($1,$2,$3,$4,$5,$6,$7)
     `;
 
-    db.run(
-        query,
-        [
-            data.transaction_id,
-            data.sip_id,
-            data.fund_id,
-            data.transaction_amount,
-            data.nav_at_purchase,
-            data.units_allocated,
-            data.transaction_date
-        ],
-        callback
-    );
+    return client.query(query, [
+        transaction_id,
+        sip_id,
+        fund_id,
+        transaction_amount,
+        nav_at_purchase,
+        units_allocated,
+        transaction_date
+    ]);
 };
 
 
 
-const fetchTransactions = (sipId, callback) => {
+
+// FETCH TRANSACTIONS
+
+const fetchTransactions = async (sipId) => {
 
     const query = `
         SELECT *
         FROM investment_transaction
-        WHERE sip_id = ?
+        WHERE sip_id = $1
     `;
 
-    db.all(query, [sipId], callback);
+    return client.query(query, [sipId]);
 };
 
 module.exports = {

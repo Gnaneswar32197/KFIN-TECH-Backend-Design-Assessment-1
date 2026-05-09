@@ -8,107 +8,145 @@ const {
 
 
 
-const createSIP = (req, res) => {
 
-    const data = req.body;
+// CREATE SIP
 
-    addSIP(data, (err) => {
+const createSIP = async (req, res) => {
 
-        if (err) {
-            return res.status(500).json({
-                message: "Error creating SIP",
-                error: err.message
-            });
-        }
+    try {
+
+        await addSIP(req.body);
 
         res.status(201).json({
             message: "SIP created successfully"
         });
-    });
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({
+            message: "Error creating SIP",
+            error: err.message
+        });
+    }
 };
 
 
 
-const getSIP = (req, res) => {
 
-    const sipId = req.params.sipId;
+// GET SIP
 
-    fetchSIP(sipId, (err, row) => {
+const getSIP = async (req, res) => {
 
-        if (err) {
-            return res.status(500).json(err.message);
-        }
+    try {
 
-        res.status(200).json(row);
-    });
-};
+        const sipId = req.params.sipId;
 
+        const result = await fetchSIP(sipId);
 
-
-const processSIP = (req, res) => {
-
-    const sipId = req.params.sipId;
-
-    fetchSIP(sipId, (err, sip) => {
-
-        if (err || !sip) {
+        if (result.rows.length === 0) {
             return res.status(404).json({
                 message: "SIP not found"
             });
         }
 
-        getLatestNAV(sip.fund_id, (err, nav) => {
+        res.status(200).json(result.rows[0]);
 
-            if (err || !nav) {
-                return res.status(404).json({
-                    message: "NAV not found"
-                });
-            }
+    } catch (err) {
 
-            const units = sip.sip_amount / nav.nav_value;
+        console.log(err);
 
-            const transactionData = {
-                transaction_id: "TXN" + Date.now(),
-                sip_id: sip.sip_id,
-                fund_id: sip.fund_id,
-                transaction_amount: sip.sip_amount,
-                nav_at_purchase: nav.nav_value,
-                units_allocated: units,
-                transaction_date: new Date().toISOString().split("T")[0]
-            };
-
-            addTransaction(transactionData, (err) => {
-
-                if (err) {
-                    return res.status(500).json({
-                        message: "Error processing SIP",
-                        error: err.message
-                    });
-                }
-
-                res.status(200).json({
-                    message: "SIP processed successfully",
-                    transaction: transactionData
-                });
-            });
+        res.status(500).json({
+            message: "Error fetching SIP"
         });
-    });
+    }
 };
 
 
 
-const getTransactions = (req, res) => {
 
-    const sipId = req.params.sipId;
+// PROCESS SIP
 
-    fetchTransactions(sipId, (err, rows) => {
+const processSIP = async (req, res) => {
 
-        if (err) {
-            return res.status(500).json(err.message);
+    try {
+
+        const sipId = req.params.sipId;
+
+        const sipResult = await fetchSIP(sipId);
+
+        if (sipResult.rows.length === 0) {
+            return res.status(404).json({
+                message: "SIP not found"
+            });
         }
 
-        res.status(200).json(rows);
-    });
+        const sip = sipResult.rows[0];
+
+        const navResult = await getLatestNAV(sip.fund_id);
+
+        if (navResult.rows.length === 0) {
+            return res.status(404).json({
+                message: "NAV not found"
+            });
+        }
+
+        const nav = navResult.rows[0];
+
+        const units = sip.sip_amount / nav.nav_value;
+
+        const transactionData = {
+            transaction_id: "TXN" + Date.now(),
+            sip_id: sip.sip_id,
+            fund_id: sip.fund_id,
+            transaction_amount: sip.sip_amount,
+            nav_at_purchase: nav.nav_value,
+            units_allocated: units,
+            transaction_date: new Date().toISOString().split("T")[0]
+        };
+
+        await addTransaction(transactionData);
+
+        res.status(200).json({
+            message: "SIP processed successfully",
+            transaction: transactionData
+        });
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({
+            message: "Error processing SIP",
+            error: err.message
+        });
+    }
+};
+
+
+
+
+// GET TRANSACTIONS
+
+const getTransactions = async (req, res) => {
+
+    try {
+
+        const sipId = req.params.sipId;
+
+        const result = await fetchTransactions(sipId);
+
+        res.status(200).json(result.rows);
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({
+            message: "Error fetching transactions"
+        });
+    }
 };
 
 module.exports = {
